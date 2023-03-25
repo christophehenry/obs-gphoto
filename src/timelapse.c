@@ -1,4 +1,5 @@
 #include <magick/MagickCore.h>
+#include <util/threading.h>
 
 #include "timelapse.h"
 #include "gphoto-utils.h"
@@ -113,7 +114,7 @@ static void timelapse_init(void *vptr) {
     CameraFile *cam_file = NULL;
     CameraFilePath camera_file_path;
     const char *image_data = NULL;
-    unsigned long data_size = NULL;
+    unsigned long data_size = 0;
     Image *image = NULL;
     ImageInfo *image_info = AcquireImageInfo();
     ExceptionInfo *exception = AcquireExceptionInfo();
@@ -151,7 +152,7 @@ static void timelapse_init(void *vptr) {
                                 data->texture_data = malloc(data->width * data->height * 4);
 
                                 ExportImagePixels(image, 0, 0, data->width, data->height, "BGRA", CharPixel,
-                                                  data->texture_data,
+                                                  &data->texture_data,
                                                   exception);
                                 if (exception->severity != UndefinedException) {
                                     CatchException(exception);
@@ -160,7 +161,7 @@ static void timelapse_init(void *vptr) {
                                 } else {
                                     obs_enter_graphics();
                                     data->texture = gs_texture_create(data->width, data->height, GS_BGRA, 1,
-                                                                      &data->texture_data,
+                                                                      (const uint8_t **) &data->texture_data,
                                                                       GS_DYNAMIC);
                                     obs_leave_graphics();
                                     goto exit;
@@ -181,7 +182,7 @@ static void timelapse_init(void *vptr) {
 
     exit:
     if(image_data){
-        free(image_data);
+        free((void *)image_data);
     }
     if(image_info){
         DestroyImageInfo(image_info);
@@ -210,7 +211,7 @@ static void timelapse_update(void *vptr, obs_data_t *settings){
 
     if (strcmp(changed, "camera") == 0) {
         data->camera_name = obs_data_get_string(settings, "camera_name");
-        if (data->source->active) {
+        if (obs_source_active(data->source)) {
             timelapse_terminate(data);
             pthread_mutex_lock(&data->camera_mutex);
             timelapse_init(data);
@@ -309,7 +310,7 @@ static void timelapse_camera_removed(void *vptr, calldata_t *calldata) {
 static void timelapse_show(void *vptr) {
     struct timelapse_data *data = vptr;
     if (strcmp(data->camera_name, "") != 0) {
-        if (!data->source->active && !data->camera) {
+        if (!obs_source_active(data->source) && !data->camera) {
             timelapse_terminate(data);
             pthread_mutex_lock(&data->camera_mutex);
             timelapse_init(data);
@@ -332,7 +333,7 @@ static void timelapse_show(void *vptr) {
 
 static void timelapse_hide(void *vptr) {
     struct timelapse_data *data = vptr;
-    if(data->source->active) {
+    if(obs_source_active(data->source)) {
         timelapse_terminate(data);
     }
 }
@@ -371,7 +372,7 @@ static void *timelapse_create(obs_data_t *settings, obs_source_t *source){
 static void timelapse_destroy(void *vptr) {
     struct timelapse_data *data = vptr;
 
-    if(data->source->active){
+    if(obs_source_active(data->source)){
         timelapse_terminate(data);
     }
 
@@ -419,7 +420,7 @@ static void timelapse_tick(void *vptr, float seconds) {
     CameraFilePath *path;
     CameraFile *cam_file = NULL;
     const char *image_data = NULL;
-    unsigned long data_size = NULL;
+    unsigned long data_size = 0;
     Image *image = NULL;
     ImageInfo *image_info = AcquireImageInfo();
     ExceptionInfo *exception = AcquireExceptionInfo();
@@ -479,7 +480,7 @@ static void timelapse_tick(void *vptr, float seconds) {
     }
 
     if (image_data) {
-        free(image_data);
+        free((void *)image_data);
     }
     if (image_info) {
         DestroyImageInfo(image_info);

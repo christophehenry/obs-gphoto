@@ -1,33 +1,14 @@
-cmake_minimum_required(VERSION 2.8)
-project(obs-gphoto)
+cmake_minimum_required(VERSION 3.26)
+project(obs-gphoto VERSION 0.4.0)
+add_library(${CMAKE_PROJECT_NAME} MODULE)
 set(obs-gphoto_DESCRIPTION "Allows connect DSLR cameras with obs-studio through gPhoto on Linux.")
-set(obs-gphoto_VERSION_MAJOR 0)
-set(obs-gphoto_VERSION_MINOR 3)
-set(obs-gphoto_VERSION_PATCH 0)
 set(CMAKE_BUILD_TYPE Release)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
-find_package(LibObs)
-if(${LibObs_FOUND})
-    message(STATUS "LibObs FOUND")
-else()
-    message(FATAL_ERROR "LibObs NOT FOUND")
-endif()
-
-find_package(Gphoto2)
-if(${GPHOTO2_FOUND})
-    message(STATUS "Gphoto2 FOUND")
-else()
-    message(FATAL_ERROR "Gphoto2 NOT FOUND")
-endif()
-
-find_package(ImageMagick COMPONENTS MagickCore)
-if(${ImageMagick_MagickCore_FOUND})
-    message(STATUS "MagickCore FOUND")
-else()
-    message(FATAL_ERROR "MagickCore NOT FOUND")
-endif()
+find_package(libobs REQUIRED)
+find_package(Gphoto2 REQUIRED)
+find_package(ImageMagick COMPONENTS MagickCore REQUIRED)
 
 find_package(udev)
 if(NOT UDEV_FOUND OR DISABLE_UDEV)
@@ -44,20 +25,44 @@ set(PLUGIN_BIN_DIRECTORY "${PLUGIN_DIRECTORY}/bin/${BITS}bit")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PLUGIN_BIN_DIRECTORY})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PLUGIN_BIN_DIRECTORY})
 
-include_directories(src ${LIBOBS_INCLUDE_DIRS} ${Gphoto2_INCLUDE_DIRS} ${ImageMagick_MagickCore_INCLUDE_DIRS} ${UDEV_INCLUDE_DIR})
+target_sources(
+        ${CMAKE_PROJECT_NAME}
+        PRIVATE
+        src/obs-gphoto.c
+        src/gphoto-utils.c
+        src/gphoto-utils.h
+        ${gphoto-udev_SOURCES}
+        src/gphoto-preview.c
+        src/gphoto-preview.h
+        src/timelapse.c
+        src/timelapse.h
+)
 
-set(SOURCE_FILES src/obs-gphoto.c src/gphoto-utils.c src/gphoto-utils.h ${gphoto-udev_SOURCES}
-        src/gphoto-preview.c src/gphoto-preview.h
-        src/timelapse.c src/timelapse.h)
+include(ObsPluginHelpers)
 
-add_library(obs-gphoto MODULE ${SOURCE_FILES})
+add_definitions(-DMAGICKCORE_QUANTUM_DEPTH=16)
+add_definitions(-DMAGICKCORE_HDRI_ENABLE=0)
 
-SET_TARGET_PROPERTIES(obs-gphoto PROPERTIES PREFIX "")
-target_link_libraries(obs-gphoto ${LIBOBS_LIBRARIES} ${Gphoto2_LIBRARIES} ${ImageMagick_LIBRARIES} ${UDEV_LIBRARIES})
+target_include_directories(
+        ${CMAKE_PROJECT_NAME}
+        PRIVATE ${CMAKE_SOURCE_DIR}/src
+)
 
-# install
-if(${SYSTEM_INSTALL})
-    install(TARGETS obs-gphoto DESTINATION ${LIBOBS_PLUGIN_DESTINATION})
-else()
-    install(DIRECTORY ${PLUGIN_DIRECTORY} DESTINATION $ENV{HOME}/.config/obs-studio/plugins USE_SOURCE_PERMISSIONS)
+
+target_link_libraries(
+        ${CMAKE_PROJECT_NAME}
+        PRIVATE OBS::libobs
+        PRIVATE ImageMagick::MagickCore
+        PRIVATE ${Gphoto2_LIBRARIES}
+        PRIVATE ${UDEV_LIBRARIES}
+)
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall)
+
+if(NOT SYSTEM_INSTALL)
+    set(CMAKE_INSTALL_PREFIX $ENV{HOME}/.config/)
+    set(OBS_PLUGIN_DESTINATION obs-studio/plugins/${CMAKE_PROJECT_NAME}/bin/${_ARCH_SUFFIX}bit)
 endif()
+
+setup_plugin_target(${CMAKE_PROJECT_NAME})
+
+

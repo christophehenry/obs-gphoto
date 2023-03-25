@@ -1,4 +1,5 @@
 #include <magick/MagickCore.h>
+#include <obs-module.h>
 
 #include "gphoto-preview.h"
 #include "gphoto-utils.h"
@@ -120,7 +121,7 @@ static void capture_init(void *vptr){
     struct preview_data *data = vptr;
     CameraFile *cam_file = NULL;
     const char *image_data = NULL;
-    unsigned long data_size = NULL;
+    unsigned long data_size = 0;
     Image *image = NULL;
     ImageInfo *image_info = AcquireImageInfo();
     ExceptionInfo *exception = AcquireExceptionInfo();
@@ -159,7 +160,7 @@ static void capture_init(void *vptr){
     }
 
     if(image_data){
-        free(image_data);
+        free((void*)image_data);
     }
     if(image_info){
         DestroyImageInfo(image_info);
@@ -195,7 +196,7 @@ static void capture_update(void *vptr, obs_data_t *settings){
 
     if (strcmp(changed, "camera") == 0) {
         data->camera_name = obs_data_get_string(settings, "camera_name");
-        if (data->source->active) {
+        if (obs_source_active(data->source)) {
             capture_terminate(data);
             pthread_mutex_lock(&data->camera_mutex);
             capture_init(data);
@@ -289,7 +290,7 @@ static void capture_camera_removed(void *vptr, calldata_t *calldata) {
 static void capture_show(void *vptr) {
     struct preview_data *data = vptr;
     if (strcmp(data->camera_name, "") != 0) {
-        if (!data->source->active && !data->camera) {
+        if (!data->source && !data->camera) {
             capture_terminate(data);
             pthread_mutex_lock(&data->camera_mutex);
             capture_init(data);
@@ -306,7 +307,7 @@ static void capture_show(void *vptr) {
 
 static void capture_hide(void *vptr) {
     struct preview_data *data = vptr;
-    if(data->source->active) {
+    if(obs_source_active(data->source)) {
         capture_terminate(data);
     }
 }
@@ -340,7 +341,7 @@ static void *capture_create(obs_data_t *settings, obs_source_t *source){
 static void capture_destroy(void *vptr) {
     struct preview_data *data = vptr;
 
-    if(data->source->active){
+    if(obs_source_active(data->source)){
         capture_terminate(data);
     }
 
