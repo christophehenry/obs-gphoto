@@ -1,5 +1,4 @@
-#include <obs-module.h>
-#include <obs-internal.h>
+#include <util/platform.h>
 #include <gphoto2/gphoto2-camera.h>
 
 int gp_camera_by_name(Camera **camera, const char *name, CameraList *cam_list, GPContext *context);

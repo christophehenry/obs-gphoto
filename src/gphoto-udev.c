@@ -1,5 +1,6 @@
-#include <obs-internal.h>
 #include <libudev.h>
+#include <util/threading.h>
+#include <callback/signal.h>
 
 enum udev_action {
     UDEV_ACTION_ADDED,
