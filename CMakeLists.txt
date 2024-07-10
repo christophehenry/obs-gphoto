@@ -40,9 +40,6 @@ target_sources(
 
 include(ObsPluginHelpers)
 
-add_definitions(-DMAGICKCORE_QUANTUM_DEPTH=16)
-add_definitions(-DMAGICKCORE_HDRI_ENABLE=0)
-
 target_include_directories(
         ${CMAKE_PROJECT_NAME}
         PRIVATE ${CMAKE_SOURCE_DIR}/src

@@ -72,3 +72,4 @@ CPackSourceConfig.cmake
 *.cbp
 /install_manifest_obs_rundir.txt
 /rundir/
+/cmake-build-release/

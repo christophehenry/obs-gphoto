@@ -1,6 +1,6 @@
 #include <obs-module.h>
 #include <gphoto2/gphoto2-camera.h>
-#include <magick/ImageMagick.h>
+#include <magick/MagickCore.h>
 
 #include "gphoto-preview.h"
 
